@@ -382,61 +382,73 @@ function findDayTextNode(
 
 
 // --------------------------------------------------
-// VALIDATE TEMPLATE
+// AGGREGATE LAYERS FROM SELECTIONS
 // --------------------------------------------------
 
-function validateTemplate(
-  template: SceneNode & ChildrenMixin
-): string[] {
+interface AggregatedLayers {
+  dayNodes: TextNode[][];
+  weekRangeNodes: TextNode[];
+  monthNodes: TextNode[];
+  missingLayers: string[];
+}
 
-  const missing: string[] = [];
+function aggregateLayersFromSelections(
+  selections: readonly SceneNode[]
+): AggregatedLayers {
+
+  const dayNodes: TextNode[][] = Array.from({ length: 7 }, () => []);
+  const weekRangeNodes: TextNode[] = [];
+  const monthNodes: TextNode[] = [];
+  const missingLayers: string[] = [];
 
   for (
-    let i = 1;
-    i <= 7;
-    i++
+    const selection of selections
   ) {
 
-    const node =
-      findDayTextNode(
-        template,
-        i
-      );
+    if (!("children" in selection)) {
+      continue;
+    }
 
-    if (!node) {
-      missing.push(
-        `day${i}`
-      );
+    const node = selection as SceneNode & ChildrenMixin;
+
+    for (let i = 1; i <= 7; i++) {
+      const found = findDayTextNode(node, i);
+      if (found) {
+        dayNodes[i - 1].push(found);
+      }
+    }
+
+    const weekRangeFound = findTextNode(node, "week-range");
+    if (weekRangeFound) {
+      weekRangeNodes.push(weekRangeFound);
+    }
+
+    const monthFound = findTextNode(node, "month");
+    if (monthFound) {
+      monthNodes.push(monthFound);
     }
   }
 
-
-  const weekRange =
-    findTextNode(
-      template,
-      "week-range"
-    );
-
-  if (!weekRange) {
-    missing.push(
-      "week-range"
-    );
+  for (let i = 1; i <= 7; i++) {
+    if (dayNodes[i - 1].length === 0) {
+      missingLayers.push(`day${i}`);
+    }
   }
 
-
-  const month =
-    findTextNode(
-      template,
-      "month"
-    );
-
-  if (!month) {
-    missing.push(
-      "month"
-    );
+  if (weekRangeNodes.length === 0) {
+    missingLayers.push("week-range");
   }
 
-  return missing;
+  if (monthNodes.length === 0) {
+    missingLayers.push("month");
+  }
+
+  return {
+    dayNodes,
+    weekRangeNodes,
+    monthNodes,
+    missingLayers
+  };
 }
 
 
@@ -483,7 +495,9 @@ async function loadTextFont(
 // --------------------------------------------------
 
 async function populateWeek(
-  clone: SceneNode & ChildrenMixin,
+  dayNodes: TextNode[][],
+  weekRangeNodes: TextNode[],
+  monthNodes: TextNode[],
   monday: Date
 ): Promise<void> {
 
@@ -511,14 +525,11 @@ async function populateWeek(
       );
 
 
-    const textNode =
-      findDayTextNode(
-        clone,
-        i
-      );
+    const nodes =
+      dayNodes[i - 1];
 
 
-    if (!textNode) {
+    if (nodes.length === 0) {
 
       console.warn(
         `Could not find day${i}`
@@ -528,23 +539,20 @@ async function populateWeek(
     }
 
 
-    await loadTextFont(
-      textNode
-    );
-
-
-    // Examples:
-    // 01.03.
-    // 05.01.
-    // 28.12.
-
-    textNode.characters =
+    const newDateText =
       `${getFormattedDay(date)}.${getFormattedMonth(date)}.`;
 
 
-    console.log(
-      `day${i} → ${textNode.characters}`
-    );
+    for (const textNode of nodes) {
+
+      await loadTextFont(textNode);
+
+      textNode.characters = newDateText;
+
+      console.log(
+        `day${i} → ${textNode.characters}`
+      );
+    }
   }
 
 
@@ -552,31 +560,22 @@ async function populateWeek(
   // WEEK RANGE
   // ----------------------------------------------
 
-  const weekRangeNode =
-    findTextNode(
-      clone,
-      "week-range"
-    );
-
-
-  if (weekRangeNode) {
-
-    await loadTextFont(
-      weekRangeNode
-    );
-
+  if (weekRangeNodes.length > 0) {
 
     const rangeText =
       `Week ${formatDateNoYear(monday)} - ${formatDateNoYear(sunday)}`;
 
 
-    weekRangeNode.characters =
-      rangeText;
+    for (const weekRangeNode of weekRangeNodes) {
 
+      await loadTextFont(weekRangeNode);
 
-    console.log(
-      `week-range → ${rangeText}`
-    );
+      weekRangeNode.characters = rangeText;
+
+      console.log(
+        `week-range → ${rangeText}`
+      );
+    }
 
   } else {
 
@@ -589,29 +588,8 @@ async function populateWeek(
   // ----------------------------------------------
   // MONTH
   // ----------------------------------------------
-  //
-  // Month is based on Sunday.
-  //
-  // 28.12.2026 - 03.01.2027
-  //
-  // Result:
-  // January 2027
-  //
-  // ----------------------------------------------
 
-  const monthNode =
-    findTextNode(
-      clone,
-      "month"
-    );
-
-
-  if (monthNode) {
-
-    await loadTextFont(
-      monthNode
-    );
-
+  if (monthNodes.length > 0) {
 
     const monthName =
       getMonthName(
@@ -619,13 +597,16 @@ async function populateWeek(
       );
 
 
-    monthNode.characters =
-      monthName;
+    for (const monthNode of monthNodes) {
 
+      await loadTextFont(monthNode);
 
-    console.log(
-      `month → ${monthName}`
-    );
+      monthNode.characters = monthName;
+
+      console.log(
+        `month → ${monthName}`
+      );
+    }
 
   } else {
 
@@ -641,51 +622,79 @@ async function populateWeek(
 // --------------------------------------------------
 
 async function createWeek(
-  template: SceneNode & ChildrenMixin,
+  templates: readonly SceneNode[],
   monday: Date,
   weekIndex: number
-): Promise<SceneNode> {
+): Promise<SceneNode[]> {
 
-  const clonedNode =
-    template.clone();
+  const clones: (SceneNode & ChildrenMixin)[] = [];
+  const baseX = templates[0].x;
+  const baseY = templates[0].y;
+  let maxHeight = 0;
+  const NODE_HORIZONTAL_SPACING = 10;
 
+  for (
+    let i = 0;
+    i < templates.length;
+    i++
+  ) {
+    const template = templates[i];
+    const clonedNode = template.clone();
+    const clone = clonedNode as SceneNode & ChildrenMixin;
 
-  const clone =
-    clonedNode as SceneNode & ChildrenMixin;
+    clone.x =
+      baseX +
+      (template.width + NODE_HORIZONTAL_SPACING) * i;
 
+    clone.y = baseY;
 
-  // ----------------------------------------------
-  // POSITION
-  // ----------------------------------------------
+    maxHeight = Math.max(maxHeight, template.height);
 
-  const WEEK_VERTICAL_SPACING =
-    50;
+    clones.push(clone);
+  }
 
+  const WEEK_VERTICAL_SPACING = 50;
+  for (const clone of clones) {
+    clone.y =
+      baseY +
+      (maxHeight + WEEK_VERTICAL_SPACING) *
+      (weekIndex + 1);
+  }
 
-  clone.x =
-    template.x;
+  const dayNodes: TextNode[][] = Array.from({ length: 7 }, () => []);
+  for (let i = 1; i <= 7; i++) {
+    for (const clone of clones) {
+      const found = findDayTextNode(clone, i);
+      if (found) {
+        dayNodes[i - 1].push(found);
+      }
+    }
+  }
 
+  const weekRangeNodes: TextNode[] = [];
+  for (const clone of clones) {
+    const found = findTextNode(clone, "week-range");
+    if (found) {
+      weekRangeNodes.push(found);
+    }
+  }
 
-  clone.y =
-    template.y +
-    (
-      template.height +
-      WEEK_VERTICAL_SPACING
-    ) *
-    (weekIndex + 1);
-
-
-  // ----------------------------------------------
-  // UPDATE CONTENT
-  // ----------------------------------------------
+  const monthNodes: TextNode[] = [];
+  for (const clone of clones) {
+    const found = findTextNode(clone, "month");
+    if (found) {
+      monthNodes.push(found);
+    }
+  }
 
   await populateWeek(
-    clone,
+    dayNodes,
+    weekRangeNodes,
+    monthNodes,
     monday
   );
 
-
-  return clone;
+  return clones;
 }
 
 
@@ -768,53 +777,54 @@ figma.ui.onmessage =
 
 
       if (
-        selection.length !== 1
+        selection.length === 0
       ) {
 
         figma.notify(
-          "Please select exactly one Template."
+          "Please select at least one Template."
         );
 
         return;
       }
 
 
-      const selected =
-        selection[0];
+      const validSelections =
+        selection.filter(
+          (node): node is SceneNode & ChildrenMixin =>
+            "children" in node
+        );
 
 
       if (
-        !("children" in selected)
+        validSelections.length === 0
       ) {
 
         figma.notify(
-          "The selected node must contain the day layers."
+          "No valid template selected."
         );
 
         return;
       }
 
 
-      const template =
-        selected as SceneNode & ChildrenMixin;
-
-
       // ------------------------------------------
-      // VALIDATE TEMPLATE
+      // AGGREGATE LAYERS FROM SELECTIONS
       // ------------------------------------------
 
-      const missing =
-        validateTemplate(
-          template
-        );
+      const {
+        dayNodes,
+        weekRangeNodes,
+        monthNodes,
+        missingLayers
+      } = aggregateLayersFromSelections(validSelections);
 
 
       if (
-        missing.length > 0
+        missingLayers.length > 0
       ) {
 
         figma.notify(
-          `Missing layers: ${missing.join(", ")}`
+          `Missing layers: ${missingLayers.join(", ")}`
         );
 
         return;
@@ -857,17 +867,16 @@ figma.ui.onmessage =
         monday <= lastMonday
       ) {
 
-        const week =
+        const weeks =
           await createWeek(
-            template,
+            validSelections,
             monday,
             weekIndex
           );
 
-
-        generatedNodes.push(
-          week
-        );
+        for (const clone of weeks) {
+          generatedNodes.push(clone);
+        }
 
 
         monday =
