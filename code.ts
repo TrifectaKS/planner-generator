@@ -381,6 +381,39 @@ function getMonthRangeName(
 
 
 // --------------------------------------------------
+// FIND NODE BY NAME
+// --------------------------------------------------
+
+function findNodeByName(
+  parent: ChildrenMixin,
+  targetName: string
+): SceneNode | null {
+
+  for (
+    const child of parent.children
+  ) {
+
+    if (child.name === targetName) {
+      return child;
+    }
+
+    if ("children" in child) {
+      const result = findNodeByName(
+        child as ChildrenMixin,
+        targetName
+      );
+
+      if (result) {
+        return result;
+      }
+    }
+  }
+
+  return null;
+}
+
+
+// --------------------------------------------------
 // FIND TEXT NODE
 // --------------------------------------------------
 
@@ -541,10 +574,139 @@ async function loadTextFont(
 
 
 // --------------------------------------------------
+// TOGGLE MONTH AND WEEK SELECTION VISIBILITY
+// --------------------------------------------------
+
+function toggleMonthAndWeekVisibility(
+  clones: (SceneNode & ChildrenMixin)[],
+  monday: Date,
+  sunday: Date
+): void {
+
+  const monthNames = [
+    "january", "february", "march", "april",
+    "may", "june", "july", "august",
+    "september", "october", "november", "december"
+  ];
+
+  const sundayMonthIndex =
+    sunday.getMonth();
+
+  const currentMonthName =
+    monthNames[sundayMonthIndex];
+
+  const weekNumber =
+    getWeekOfMonth(monday);
+
+  const weeksInMonth =
+    getWeeksInMonth(sunday);
+
+  const weekSelectionName =
+    `week${weekNumber}/${weeksInMonth}-selection`;
+
+  for (const clone of clones) {
+
+    const calendars =
+      findNodeByName(
+        clone,
+        "calendars"
+      );
+
+    if (calendars && "children" in calendars) {
+
+      for (const child of calendars.children) {
+
+        const childName =
+          child.name.toLowerCase();
+
+        if (
+          monthNames.some(
+            name => childName.includes(name)
+          )
+        ) {
+          child.visible = childName === currentMonthName;
+        }
+
+        if (childName.includes("week") && childName.includes("selection")) {
+          child.visible = childName === weekSelectionName;
+        }
+      }
+    }
+  }
+}
+
+
+function getWeekOfMonth(
+  monday: Date
+): number {
+
+  const firstDayOfMonth =
+    new Date(
+      monday.getFullYear(),
+      monday.getMonth(),
+      1
+    );
+
+  const firstMonday =
+    getMonday(firstDayOfMonth);
+
+  if (monday < firstMonday) {
+    return 1;
+  }
+
+  const diffTime =
+    monday.getTime() - firstMonday.getTime();
+
+  const diffDays =
+    Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+  return Math.floor(diffDays / 7) + 1;
+}
+
+
+function getWeeksInMonth(
+  date: Date
+): number {
+
+  const year =
+    date.getFullYear();
+
+  const month =
+    date.getMonth();
+
+  const firstDayOfMonth =
+    new Date(year, month, 1);
+
+  const lastDayOfMonth =
+    new Date(year, month + 1, 0);
+
+  const firstMonday =
+    getMonday(firstDayOfMonth);
+
+  const lastSunday =
+    new Date(
+      getMonday(lastDayOfMonth)
+    );
+  lastSunday.setDate(
+    lastSunday.getDate() + 6
+  );
+
+  const diffTime =
+    lastSunday.getTime() - firstMonday.getTime();
+
+  const diffDays =
+    Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+  return Math.floor(diffDays / 7) + 1;
+}
+
+
+// --------------------------------------------------
 // POPULATE WEEK
 // --------------------------------------------------
 
 async function populateWeek(
+  clones: (SceneNode & ChildrenMixin)[],
   dayNodes: TextNode[][],
   weekRangeNodes: TextNode[],
   monthNodes: TextNode[],
@@ -556,6 +718,17 @@ async function populateWeek(
       monday,
       6
     );
+
+
+  // ----------------------------------------------
+  // TOGGLE VISIBILITY
+  // ----------------------------------------------
+
+  toggleMonthAndWeekVisibility(
+    clones,
+    monday,
+    sunday
+  );
 
 
   // ----------------------------------------------
@@ -739,6 +912,7 @@ async function createWeek(
   }
 
   await populateWeek(
+    clones,
     dayNodes,
     weekRangeNodes,
     monthNodes,
