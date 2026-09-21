@@ -41,7 +41,7 @@ That's it! Visual Studio Code will regenerate the JavaScript file every time you
 
 # Weekly Planner Generator
 
-A Figma plugin that automatically creates weekly planner copies from a selected template.
+A quick and dirty Figma plugin that automatically creates weekly planner copies from a selected template.
 
 The plugin takes a **start date** and **end date**, then generates one planner copy for every complete Monday–Sunday week between those dates.
 
