@@ -330,6 +330,56 @@ function getMonthName(
 }
 
 
+function getMonthRangeName(
+  monday: Date,
+  sunday: Date
+): string {
+
+  const months: string[] = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December"
+  ];
+
+  const mondayMonth =
+    months[monday.getMonth()];
+
+  const mondayYear =
+    monday.getFullYear();
+
+  const sundayMonth =
+    months[sunday.getMonth()];
+
+  const sundayYear =
+    sunday.getFullYear();
+
+  const sameYear =
+    mondayYear === sundayYear;
+
+  const sameMonth =
+    monday.getMonth() === sunday.getMonth();
+
+  if (sameMonth && sameYear) {
+    return `${sundayMonth} ${sundayYear}`;
+  }
+
+  if (sameYear) {
+    return `${mondayMonth}/${sundayMonth} ${sundayYear}`;
+  }
+
+  return `${mondayMonth} ${mondayYear}/${sundayMonth} ${sundayYear}`;
+}
+
+
 // --------------------------------------------------
 // FIND TEXT NODE
 // --------------------------------------------------
@@ -592,7 +642,8 @@ async function populateWeek(
   if (monthNodes.length > 0) {
 
     const monthName =
-      getMonthName(
+      getMonthRangeName(
+        monday,
         sunday
       );
 
