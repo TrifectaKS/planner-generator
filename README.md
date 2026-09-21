@@ -41,7 +41,7 @@ That's it! Visual Studio Code will regenerate the JavaScript file every time you
 
 # Weekly Planner Generator
 
-A quick and dirty Figma plugin that automatically creates weekly planner copies from a selected template.
+A Figma plugin that automatically creates weekly planner copies from selected templates.
 
 The plugin takes a **start date** and **end date**, then generates one planner copy for every complete Monday–Sunday week between those dates.
 
@@ -54,12 +54,14 @@ The plugin takes a **start date** and **end date**, then generates one planner c
 * Automatically expands partial date ranges to complete weeks.
 * Updates the dates inside each generated planner.
 * Supports weeks that cross:
-
   * Months
   * Years
 * Automatically displays the month and year based on the **Sunday/end date** of each week.
 * Generated planners are stacked vertically below the template.
 * Preserves the original template.
+* **Multiple template selections**: Select multiple templates to contribute different layers.
+* **All matching nodes updated**: When multiple nodes share the same layer name, all are updated.
+* **Optional visibility toggling**: Automatic month and week selection visibility in calendars section.
 
 ---
 
@@ -67,9 +69,9 @@ The plugin takes a **start date** and **end date**, then generates one planner c
 
 Before running the plugin, create a planner design in Figma.
 
-Your planner should be inside **one parent frame/component/group** that will act as the template.
+Your planner should be inside **one or more parent frames/components/groups** that will act as the templates.
 
-For example:
+For example (single template):
 
 ```text
 Template
@@ -82,6 +84,18 @@ Template
 ├── day7
 ├── week-range
 └── month
+```
+
+Or (multiple templates):
+
+```text
+Selection 1                    Selection 2
+├── Header                     ├── day3
+│   ├── month                  ├── day4
+│   └── week-range             ├── day5
+└── Days row                   ├── day6
+    ├── day1                   └── day7
+    └── day2
 ```
 
 The layers can be nested inside other frames or groups. They do **not** have to be direct children of `Template`.
@@ -140,7 +154,32 @@ is not.
 
 ---
 
-# 3. Recommended Template Structure
+# 3. Multiple Template Selections
+
+You can select **multiple templates** to contribute different layers.
+
+For example:
+
+```text
+Selection 1: Contains day1, day2, week-range, month
+Selection 2: Contains day3, day4, day5, day6, day7
+```
+
+The plugin aggregates all layers from all selections and updates them across all generated clones.
+
+Generated clones are placed side-by-side horizontally with **10px spacing**.
+
+---
+
+# 4. All Matching Nodes Updated
+
+When multiple nodes share the same layer name (e.g., multiple `day1` layers), **all** matching nodes are updated with the correct date.
+
+This is useful when your template design has the same date appearing in multiple places.
+
+---
+
+# 5. Recommended Template Structure
 
 You can organize the visual design however you want.
 
@@ -179,11 +218,11 @@ This is only an example.
 
 The plugin does not require this exact structure.
 
-The important part is that the required text layers exist somewhere inside the selected template.
+The important part is that the required text layers exist somewhere inside the selected templates.
 
 ---
 
-# 4. Layer Names
+# 6. Layer Names
 
 A simple way to set up the template is to create your text layers and rename them:
 
@@ -217,9 +256,9 @@ The actual design is completely up to you.
 
 ---
 
-# 5. Template Container
+# 7. Template Container
 
-Select one parent node containing all of the planner elements.
+Select one or more parent nodes containing the planner elements.
 
 For example:
 
@@ -236,15 +275,15 @@ This can be a:
 * Group
 * Other Figma scene node that contains children
 
-The plugin uses this selected node as the source for the generated copies.
+The plugin uses these selected nodes as the source for the generated copies.
 
 ### Important
 
-You must select **exactly one template** before clicking Generate.
+You must select **at least one template** before clicking Generate.
 
 ---
 
-# 6. Date Formatting
+# 8. Date Formatting
 
 The plugin automatically replaces the contents of the date layers.
 
@@ -282,7 +321,7 @@ becomes:
 
 ---
 
-# 7. Week Range
+# 9. Week Range
 
 The `week-range` layer is automatically populated with:
 
@@ -300,15 +339,15 @@ The year is intentionally not displayed in the week range.
 
 ---
 
-# 8. Month
+# 10. Month
 
-The `month` layer displays the **full month name and year**.
+The `month` layer displays the **month name and year**.
 
 The month is determined by the **Sunday/end date of the week**.
 
 For example:
 
-### Week crossing a year
+### Week within one month
 
 Monday:
 
@@ -328,7 +367,7 @@ The month layer becomes:
 January 2027
 ```
 
-### Week crossing a month
+### Week crossing months (same year)
 
 Monday:
 
@@ -345,14 +384,32 @@ Sunday:
 The month layer becomes:
 
 ```text
-April 2027
+March/April 2027
 ```
 
-This means the displayed month always represents the month containing the end of the planner week.
+### Week crossing a year
+
+Monday:
+
+```text
+28.12.2026
+```
+
+Sunday:
+
+```text
+03.01.2027
+```
+
+The month layer becomes:
+
+```text
+December 2026/January 2027
+```
 
 ---
 
-# 9. How Date Ranges Work
+# 11. How Date Ranges Work
 
 The plugin always generates **complete Monday–Sunday weeks**.
 
@@ -382,7 +439,7 @@ The result is:
 
 ---
 
-# 10. Multiple Weeks
+# 12. Multiple Weeks
 
 If the selected date range covers multiple weeks, the plugin creates one copy per week.
 
@@ -405,43 +462,87 @@ The final week is included because it contains the selected end date.
 
 ---
 
-# 11. Generated Layout
+# 13. Generated Layout
 
 The original template is not modified.
 
-Instead, the plugin clones it.
+Instead, the plugin clones all selected templates for each week.
 
-The generated copies are placed vertically below the original template.
+The generated copies are placed:
 
-The current spacing is:
+- **Vertically**: Each week is stacked below the previous with **50px spacing**
+- **Horizontally**: Multiple template selections are placed side-by-side with **10px spacing**
 
-```text
-50px
-```
-
-between each planner.
-
-For example:
+For example, with 2 template selections:
 
 ```text
-Template
-   ↓
-   50px
-   ↓
-Week 1
-   ↓
-   50px
-   ↓
-Week 2
-   ↓
-   50px
-   ↓
-Week 3
+Week 1:  [Template1]  10px  [Template2]
+           ↓ 50px
+Week 2:  [Template1]  10px  [Template2]
+           ↓ 50px
+Week 3:  [Template1]  10px  [Template2]
 ```
 
 ---
 
-# 12. Installing the Plugin for Development
+# 14. Optional Calendars Section
+
+The plugin can optionally toggle visibility of month and week selection components.
+
+### Calendars Section
+
+If a `calendars` section exists inside the template, the plugin will:
+
+1. Look for child components named after months (e.g., `january`, `february`)
+2. Hide all month components
+3. Unhide only the component matching the current month
+
+Example structure:
+
+```text
+Template
+├── calendars
+│   ├── january
+│   ├── february
+│   ├── march
+│   └── ...
+└── ...
+```
+
+### Week Selection
+
+If week selection components exist, the plugin will:
+
+1. Look for components matching the pattern `week{N}/{total}-selection` (e.g., `week1/5-selection`, `week3/4-selection`)
+2. Hide all week selections
+3. Unhide only the selection matching the current week
+
+Example structure:
+
+```text
+Template
+├── calendars
+│   ├── week1/5-selection
+│   ├── week2/5-selection
+│   ├── week3/5-selection
+│   ├── week4/5-selection
+│   ├── week5/5-selection
+│   └── ...
+└── ...
+```
+
+Supported patterns:
+- `week{N}/4-selection` (4-week month)
+- `week{N}/5-selection` (5-week month)
+- `week{N}/6-selection` (6-week month)
+
+### Important
+
+This feature is **completely optional**. If the `calendars` section or week selection components are not found, the plugin continues without error.
+
+---
+
+# 15. Installing the Plugin for Development
 
 If you are developing the plugin locally:
 
@@ -493,11 +594,11 @@ In Figma:
 
 ---
 
-# 13. Using the Plugin
+# 16. Using the Plugin
 
 ### Step 1
 
-Create your planner template.
+Create your planner template(s).
 
 ### Step 2
 
@@ -517,12 +618,13 @@ month
 
 ### Step 3
 
-Select the entire template.
+Select one or more templates.
 
 For example:
 
 ```text
-Template
+Selection 1: Template with day1, day2, day3, week-range, month
+Selection 2: Template with day4, day5, day6, day7
 ```
 
 ### Step 4
@@ -549,7 +651,7 @@ The plugin will create the required weekly copies.
 
 ---
 
-# 14. Example
+# 17. Example
 
 Suppose you select a template and enter:
 
@@ -576,7 +678,7 @@ Sunday    03.01.2027
 
 ```text
 week-range: Week 28.12.-03.01.
-month: January 2027
+month: December 2026/January 2027
 ```
 
 ### Week 2
@@ -615,11 +717,11 @@ month: January 2027
 
 ---
 
-# 15. Troubleshooting
+# 18. Troubleshooting
 
-## "Please select exactly one Template."
+## "Please select at least one Template."
 
-Make sure exactly one node is selected before generating.
+Make sure at least one node is selected before generating.
 
 Select the parent template rather than an individual text layer.
 
@@ -653,7 +755,7 @@ Check that:
 
 1. The layers are actually TEXT layers.
 2. Their names are correct.
-3. The template is selected.
+3. At least one template is selected.
 4. The plugin is running the latest compiled `code.js`.
 5. The TypeScript source has been compiled after the latest changes.
 
@@ -675,33 +777,33 @@ Sunday 03.01.2027
 will display:
 
 ```text
-January 2027
+December 2026/January 2027
 ```
 
-This is intentional.
+This is intentional for weeks spanning two months.
 
 ---
 
-# 16. Template Checklist
+# 19. Template Checklist
 
 Before using the plugin, verify:
 
-* [ ] One parent template exists.
-* [ ] `day1` exists as a TEXT layer.
-* [ ] `day2` exists as a TEXT layer.
-* [ ] `day3` exists as a TEXT layer.
-* [ ] `day4` exists as a TEXT layer.
-* [ ] `day5` exists as a TEXT layer.
-* [ ] `day6` exists as a TEXT layer.
-* [ ] `day7` exists as a TEXT layer.
-* [ ] `week-range` exists as a TEXT layer.
-* [ ] `month` exists as a TEXT layer.
-* [ ] All required layers are somewhere inside the template.
-* [ ] Exactly one template is selected before running the plugin.
+* [ ] At least one parent template exists.
+* [ ] `day1` exists as a TEXT layer (in any selection).
+* [ ] `day2` exists as a TEXT layer (in any selection).
+* [ ] `day3` exists as a TEXT layer (in any selection).
+* [ ] `day4` exists as a TEXT layer (in any selection).
+* [ ] `day5` exists as a TEXT layer (in any selection).
+* [ ] `day6` exists as a TEXT layer (in any selection).
+* [ ] `day7` exists as a TEXT layer (in any selection).
+* [ ] `week-range` exists as a TEXT layer (in any selection).
+* [ ] `month` exists as a TEXT layer (in any selection).
+* [ ] All required layers are somewhere inside the selected templates.
+* [ ] At least one template is selected before running the plugin.
 
 ---
 
-# 17. Required Layer Names — Quick Reference
+# 20. Required Layer Names — Quick Reference
 
 Copy these names exactly:
 
@@ -724,13 +826,13 @@ month
 The workflow is:
 
 ```text
-Create Template
+Create Template(s)
       ↓
 Add required TEXT layers
       ↓
 Name layers correctly
       ↓
-Select Template
+Select Template(s)
       ↓
 Run Plugin
       ↓
