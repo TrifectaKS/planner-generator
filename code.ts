@@ -567,7 +567,7 @@ async function populateWeek(
 
 
     const rangeText =
-      `Week ${formatDateNoYear(monday)}-${formatDateNoYear(sunday)}`;
+      `Week ${formatDateNoYear(monday)} - ${formatDateNoYear(sunday)}`;
 
 
     weekRangeNode.characters =
